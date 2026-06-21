@@ -1,0 +1,46 @@
+[
+  {
+    "_id": { "$oid": "666500000000000000000001" },
+    "userId": { "$oid": "666200000000000000000005" },
+    "type": "ticket_assigned",
+    "title": "New Ticket Assigned",
+    "message": "You were assigned: \"VPN connection fails after password reset\"",
+    "link": "/tickets/666300000000000000000001",
+    "isRead": false,
+    "createdAt": { "$date": "2026-06-18T08:30:00.000Z" },
+    "updatedAt": { "$date": "2026-06-18T08:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666500000000000000000002" },
+    "userId": { "$oid": "666200000000000000000003" },
+    "type": "ticket_assigned",
+    "title": "New Ticket Assigned",
+    "message": "A new ticket \"Enable MFA for finance shared mailbox\" has been assigned to you.",
+    "link": "/tickets/666300000000000000000002",
+    "isRead": false,
+    "createdAt": { "$date": "2026-06-20T09:00:00.000Z" },
+    "updatedAt": { "$date": "2026-06-20T09:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666500000000000000000003" },
+    "userId": { "$oid": "666200000000000000000007" },
+    "type": "comment_added",
+    "title": "New Comment Added",
+    "message": "Yousef Nasser commented on: \"VPN connection fails after password reset\"",
+    "link": "/tickets/666300000000000000000001",
+    "isRead": true,
+    "createdAt": { "$date": "2026-06-18T09:10:00.000Z" },
+    "updatedAt": { "$date": "2026-06-18T09:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666500000000000000000004" },
+    "userId": { "$oid": "666200000000000000000004" },
+    "type": "ticket_updated",
+    "title": "Ticket Status Updated",
+    "message": "Ticket \"Invoice total does not match account plan\" status changed to \"pending\".",
+    "link": "/tickets/666300000000000000000003",
+    "isRead": false,
+    "createdAt": { "$date": "2026-06-20T12:10:00.000Z" },
+    "updatedAt": { "$date": "2026-06-20T12:10:00.000Z" }
+  }
+]

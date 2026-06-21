@@ -1,0 +1,20 @@
+ {
+    "_id": { "$oid": "676f10000000000000000001" },
+    "title": "Email access not working",
+    "description": "User cannot access Ooredoo email. Outlook shows authentication error.",
+    "category": "Account",
+    "priority": "high",
+    "status": "open",
+    "createdBy": { "$oid": "676f00000000000000000003" },
+    "assignee": { "$oid": "676f00000000000000000002" },
+    "dueDate": { "$date": "2026-01-02T10:00:00.000Z" },
+    "attachments": [],
+    "tags": ["email", "outlook"],
+    "estimatedTime": 2,
+    "actualTime": null,
+    "resolution": null,
+    "satisfactionRating": null,
+    "createdAt": { "$date": "2025-12-30T08:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-30T08:00:00.000Z" },
+    "closedAt": { "$date": "2025-12-30T08:00:00.000Z" }
+  }

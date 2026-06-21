@@ -1,0 +1,20 @@
+[
+  {
+    "_id": { "$oid": "676f20000000000000000001" },
+    "ticketId": { "$oid": "676f10000000000000000001" },
+    "userId": { "$oid": "676f00000000000000000002" },
+    "content": "Checking mailbox credentials and verifying MFA status.",
+    "attachments": [],
+    "createdAt": { "$date": "2025-12-30T08:30:00.000Z" },
+    "updatedAt": { "$date": "2025-12-30T08:30:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "676f20000000000000000002" },
+    "ticketId": { "$oid": "676f10000000000000000001" },
+    "userId": { "$oid": "676f00000000000000000003" },
+    "content": "Issue started today after password reset.",
+    "attachments": [],
+    "createdAt": { "$date": "2025-12-30T08:40:00.000Z" },
+    "updatedAt": { "$date": "2025-12-30T08:40:00.000Z" }
+  }
+]

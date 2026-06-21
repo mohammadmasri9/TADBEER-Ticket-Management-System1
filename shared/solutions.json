@@ -1,0 +1,18 @@
+[
+  {
+    "_id": { "$oid": "676f30000000000000000001" },
+    "ticketId": { "$oid": "676f10000000000000000001" },
+    "title": "Fix Outlook auth error after reset",
+    "problem": "Outlook login fails after password reset / MFA mismatch.",
+    "solution": "Re-authenticate account, clear cached credentials, verify MFA, re-add profile if needed.",
+    "category": "Account",
+    "tags": ["outlook", "credentials", "mfa"],
+    "embedding": [],
+    "createdBy": { "$oid": "676f00000000000000000002" },
+    "upvotes": 0,
+    "views": 0,
+    "helpful": true,
+    "createdAt": { "$date": "2025-12-30T09:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-30T09:00:00.000Z" }
+  }
+]

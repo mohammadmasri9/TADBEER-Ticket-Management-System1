@@ -1,0 +1,14 @@
+{
+    "_id": { "$oid": "676f00000000000000000001" },
+    "name": "Mohammad Almasri",
+    "email": "mohammad@ooredoo.ps",
+    "passwordHash": "$2b$10$demoHashReplaceLater",
+    "role": "admin",
+    "avatar":"profile.png",
+    "department": "IT",
+    "phone": "0599000000",
+    "status": "available",
+    "expertise": ["Support", "Networking"],
+    "createdAt": { "$date": "2025-12-01T10:00:00.000Z" },
+    "updatedAt": { "$date": "2025-12-01T10:00:00.000Z" }
+  }

@@ -1,0 +1,410 @@
+/* src/style/CommonPage.css */
+
+/* ========== OOREDOO BRAND VARIABLES ========== */
+:root {
+  /* Brand Colors */
+  --ooredoo-red: #ED1C24;
+  --ooredoo-red-dark: #C51017;
+  --ooredoo-red-light: #FF4A50;
+
+  /* Greys */
+  --ooredoo-grey-dark: #414042;
+  --ooredoo-grey-medium: #808285;
+  --ooredoo-grey-light: #A6A9AC;
+  --ooredoo-grey-lighter: #D1D3D4;
+  --ooredoo-grey-lightest: #E6E7E8;
+  --ooredoo-bg-light: #F1F2F2;
+  --ooredoo-white: #FFFFFF;
+
+  /* Shadows */
+  --ooredoo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --ooredoo-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --ooredoo-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --ooredoo-shadow-red: 0 6px 20px rgba(237, 28, 36, 0.25);
+
+  /* Transitions */
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  /* Border Radius */
+  --border-radius-sm: 8px;
+  --border-radius-md: 10px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 20px;
+
+  /* Status Colors */
+  --status-open: #FFC107;
+  --status-open-bg: rgba(255, 193, 7, 0.1);
+  --status-progress: #2196F3;
+  --status-progress-bg: rgba(33, 150, 243, 0.1);
+  --status-pending: #FF9800;
+  --status-pending-bg: rgba(255, 152, 0, 0.1);
+  --status-resolved: #4CAF50;
+  --status-resolved-bg: rgba(76, 175, 80, 0.1);
+  --status-closed: #9e9e9e;
+  --status-closed-bg: rgba(158, 158, 158, 0.1);
+
+  /* Priority Colors */
+  --priority-low: #4CAF50;
+  --priority-low-bg: rgba(76, 175, 80, 0.1);
+  --priority-medium: #FFC107;
+  --priority-medium-bg: rgba(255, 193, 7, 0.1);
+  --priority-high: #FF9800;
+  --priority-high-bg: rgba(255, 152, 0, 0.1);
+  --priority-urgent: #F44336;
+  --priority-urgent-bg: rgba(244, 67, 54, 0.1);
+
+  /* Favorite */
+  --favorite-gold: #FFD700;
+  --favorite-gold-bg: rgba(255, 215, 0, 0.12);
+}
+
+/* ========== PAGE LAYOUT ========== */
+.common-page {
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+.page-header {
+  margin-bottom: 2rem;
+}
+
+.page-header h1 {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--ooredoo-grey-dark);
+  margin-bottom: 0.5rem;
+  font-family: 'Futura', Arial, sans-serif;
+  letter-spacing: 0.2px;
+}
+
+.page-description {
+  font-size: 1rem;
+  color: var(--ooredoo-grey-medium);
+  margin: 0;
+  font-family: 'Futura', Arial, sans-serif;
+  font-weight: 600;
+}
+
+.page-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+/* ========== CONTENT SECTION ========== */
+.content-section {
+  background: var(--ooredoo-white);
+  border-radius: var(--border-radius-lg);
+  padding: 2rem;
+  border: 2px solid var(--ooredoo-grey-lightest);
+  box-shadow: var(--ooredoo-shadow-sm);
+}
+
+.content-section h2 {
+  font-size: 1.25rem;
+  font-weight: 800;
+  color: var(--ooredoo-grey-dark);
+  margin-bottom: 1rem;
+  font-family: 'Futura', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* ========== TICKETS GRID ========== */
+.ticket-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(min(340px, 100%), 1fr));
+  gap: 20px;
+}
+
+/* ========== TICKET CARD ========== */
+.ticket-card {
+  background: var(--ooredoo-white);
+  border: 2px solid var(--ooredoo-grey-lightest);
+  border-radius: var(--border-radius-lg);
+  padding: 20px;
+  cursor: pointer;
+  transition: all var(--transition-slow);
+  position: relative;
+  overflow: hidden;
+  box-shadow: none;
+}
+
+.ticket-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--ooredoo-red);
+  transform: scaleY(0);
+  transition: transform var(--transition-base);
+}
+
+.ticket-card:hover,
+.ticket-card:focus-visible {
+  border-color: var(--ooredoo-red);
+  box-shadow: var(--ooredoo-shadow-red);
+  transform: translateY(-4px);
+  outline: none;
+}
+
+.ticket-card:hover::before {
+  transform: scaleY(1);
+}
+
+/* variants */
+.ticket-card.favorite::before {
+  background: var(--favorite-gold);
+}
+.ticket-card.archived::before {
+  background: var(--ooredoo-grey-medium);
+}
+.ticket-card.deleted::before {
+  background: var(--ooredoo-red);
+}
+
+/* ========== CARD HEADER ========== */
+.ticket-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+/* Badges */
+.status-badge,
+.priority-badge,
+.category-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 800;
+  font-family: 'Futura', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  line-height: 1;
+}
+
+/* Status */
+.status-badge.open { background: var(--status-open-bg); color: var(--status-open); }
+.status-badge.in-progress { background: var(--status-progress-bg); color: var(--status-progress); }
+.status-badge.pending { background: var(--status-pending-bg); color: var(--status-pending); }
+.status-badge.resolved { background: var(--status-resolved-bg); color: var(--status-resolved); }
+.status-badge.closed { background: var(--status-closed-bg); color: var(--status-closed); }
+
+.status-badge.archived,
+.status-badge.deleted {
+  background: rgba(158, 158, 158, 0.1);
+  color: #9e9e9e;
+}
+
+/* Priority */
+.priority-badge.low { background: var(--priority-low-bg); color: var(--priority-low); }
+.priority-badge.medium { background: var(--priority-medium-bg); color: var(--priority-medium); }
+.priority-badge.high { background: var(--priority-high-bg); color: var(--priority-high); }
+.priority-badge.urgent { background: var(--priority-urgent-bg); color: var(--priority-urgent); }
+
+/* Favorite button (⭐) */
+.favorite-btn {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 10px;
+  border-radius: var(--border-radius-sm);
+  border: 2px solid var(--favorite-gold);
+  background: transparent;
+  color: var(--favorite-gold);
+  cursor: pointer;
+  transition: all var(--transition-base);
+  line-height: 1;
+}
+
+.favorite-btn:hover {
+  background: var(--favorite-gold);
+  color: var(--ooredoo-white);
+  transform: translateY(-1px);
+}
+
+.favorite-btn.active {
+  background: var(--favorite-gold);
+  color: var(--ooredoo-white);
+}
+
+/* ========== TITLE & DESCRIPTION ========== */
+.ticket-title {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ooredoo-grey-dark);
+  margin: 0 0 12px 0;
+  font-family: 'Futura', Arial, sans-serif;
+  line-height: 1.4;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ticket-description {
+  font-size: 14px;
+  color: var(--ooredoo-grey-medium);
+  line-height: 1.6;
+  margin: 0 0 14px 0;
+  font-family: 'Futura', Arial, sans-serif;
+  font-weight: 600;
+
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* ========== FOOTER ========== */
+.ticket-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 14px;
+  border-top: 2px solid var(--ooredoo-bg-light);
+  gap: 12px;
+}
+
+.ticket-meta {
+  font-size: 12px;
+  color: var(--ooredoo-grey-medium);
+  font-family: 'Futura', Arial, sans-serif;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Actions (Recycle Bin buttons / Unarchive button) */
+.ticket-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.btn-restore,
+.btn-delete-permanent {
+  padding: 10px 14px;
+  border-radius: var(--border-radius-sm);
+  font-size: 12px;
+  font-weight: 800;
+  font-family: 'Futura', Arial, sans-serif;
+  border: none;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.btn-restore {
+  background: #4CAF50;
+  color: white;
+}
+.btn-restore:hover {
+  background: #45a049;
+  box-shadow: 0 4px 12px rgba(76, 175, 80, 0.3);
+  transform: translateY(-1px);
+}
+
+.btn-delete-permanent {
+  background: var(--ooredoo-red);
+  color: white;
+}
+.btn-delete-permanent:hover {
+  background: var(--ooredoo-red-dark);
+  box-shadow: var(--ooredoo-shadow-red);
+  transform: translateY(-1px);
+}
+
+/* ========== EMPTY STATE ========== */
+.empty-state {
+  text-align: center;
+  padding: 3rem 1rem;
+  background: var(--ooredoo-white);
+  border: 2px solid var(--ooredoo-grey-lightest);
+  border-radius: var(--border-radius-lg);
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  opacity: 0.55;
+}
+
+.empty-state h3 {
+  color: var(--ooredoo-grey-dark);
+  margin-bottom: 0.5rem;
+  font-family: 'Futura', Arial, sans-serif;
+  font-weight: 800;
+}
+
+.empty-state p {
+  font-size: 1rem;
+  color: var(--ooredoo-grey-medium);
+  margin: 0;
+  font-family: 'Futura', Arial, sans-serif;
+  font-weight: 600;
+}
+
+/* ========== RESPONSIVE ========== */
+@media (max-width: 768px) {
+  .common-page {
+    padding: 1rem;
+  }
+
+  .page-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .content-section {
+    padding: 1.25rem;
+  }
+
+  .ticket-footer {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .ticket-list {
+    grid-template-columns: 1fr;
+  }
+
+  .favorite-btn {
+    padding: 7px 9px;
+  }
+}
+
+/* ========== ACCESSIBILITY ========== */
+.ticket-card:focus-visible,
+.favorite-btn:focus-visible,
+.btn-restore:focus-visible,
+.btn-delete-permanent:focus-visible {
+  outline: 3px solid var(--ooredoo-red);
+  outline-offset: 2px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

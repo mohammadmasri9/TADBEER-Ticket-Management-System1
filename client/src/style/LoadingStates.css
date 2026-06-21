@@ -1,0 +1,60 @@
+/* src/components/LoadingStates.css */
+.skeleton-card {
+    pointer-events: none;
+    opacity: 0.7;
+  }
+  
+  .skeleton {
+    background: linear-gradient(
+      90deg,
+      #E6E7E8 0%,
+      #F1F2F2 50%,
+      #E6E7E8 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 1.5s infinite;
+    border-radius: 8px;
+  }
+  
+  .skeleton-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+  }
+  
+  .skeleton-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  
+  .skeleton-title {
+    height: 20px;
+    width: 60%;
+  }
+  
+  .skeleton-meta {
+    height: 16px;
+    width: 40%;
+  }
+  
+  .skeleton-thumbnail {
+    height: 180px;
+    width: 100%;
+  }
+  
+  .skeleton-footer {
+    height: 48px;
+    width: 100%;
+  }
+  
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+  

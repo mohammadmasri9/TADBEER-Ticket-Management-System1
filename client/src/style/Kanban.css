@@ -1,0 +1,931 @@
+/* src/style/Kanban.css */
+
+/* ========== OOREDOO BRAND VARIABLES ========== */
+:root {
+  --ooredoo-red: #ED1C24;
+  --ooredoo-red-dark: #C51017;
+  --ooredoo-red-light: #FF4A50;
+
+  --ooredoo-grey-dark: #414042;
+  --ooredoo-grey-medium: #808285;
+  --ooredoo-grey-light: #A6A9AC;
+  --ooredoo-grey-lighter: #D1D3D4;
+  --ooredoo-grey-lightest: #E6E7E8;
+
+  --ooredoo-bg-light: #F1F2F2;
+  --ooredoo-white: #FFFFFF;
+
+  --ooredoo-shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --ooredoo-shadow-md: 0 4px 16px rgba(0, 0, 0, 0.12);
+  --ooredoo-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.15);
+  --ooredoo-shadow-red: 0 6px 20px rgba(237, 28, 36, 0.25);
+
+  --transition-fast: 0.15s ease;
+  --transition-base: 0.2s ease;
+  --transition-slow: 0.3s ease;
+
+  --border-radius-sm: 8px;
+  --border-radius-md: 10px;
+  --border-radius-lg: 12px;
+  --border-radius-xl: 20px;
+
+  /* Priority Colors */
+  --priority-urgent: #DC2626;
+  --priority-urgent-bg: rgba(220, 38, 38, 0.1);
+
+  --priority-high: #F59E0B;
+  --priority-high-bg: rgba(245, 158, 11, 0.1);
+
+  --priority-medium: #3B82F6;
+  --priority-medium-bg: rgba(59, 130, 246, 0.1);
+
+  --priority-low: #10B981;
+  --priority-low-bg: rgba(16, 185, 129, 0.1);
+}
+
+/* ========== GLOBAL RESETS ========== */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* ========== PAGE LAYOUT ========== */
+.kanban-page {
+  min-height: 100vh;
+  background: var(--ooredoo-bg-light);
+  display: flex;
+  flex-direction: column;
+}
+
+.kanban-content {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 24px 32px 32px;
+  flex: 1;
+}
+
+/* ========== HEADER ========== */
+.kanban-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 20px;
+  flex-wrap: wrap;
+  margin-bottom: 24px;
+}
+
+.kanban-header-left {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.kanban-title {
+  font-size: 32px;
+  font-weight: 700;
+  color: var(--ooredoo-grey-dark);
+  font-family: 'Futura', Arial, sans-serif;
+  margin: 0;
+  line-height: 1.2;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.kanban-subtitle {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ooredoo-grey-medium);
+  font-family: 'Futura', Arial, sans-serif;
+  margin: 0;
+}
+
+.kanban-header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* Search Box */
+.kanban-search-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--ooredoo-white);
+  border: 2px solid var(--ooredoo-grey-lightest);
+  border-radius: var(--border-radius-md);
+  padding: 12px 16px;
+  min-width: 280px;
+  transition: all var(--transition-base);
+}
+
+.kanban-search-box:focus-within {
+  border-color: var(--ooredoo-red);
+  box-shadow: 0 0 0 3px rgba(237, 28, 36, 0.1);
+}
+
+.kanban-search-box svg {
+  color: var(--ooredoo-grey-medium);
+  flex-shrink: 0;
+}
+
+.kanban-search-box input {
+  flex: 1;
+  border: none;
+  outline: none;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Futura', Arial, sans-serif;
+  color: var(--ooredoo-grey-dark);
+  background: transparent;
+  min-width: 0;
+}
+
+.kanban-search-box input::placeholder {
+  color: var(--ooredoo-grey-light);
+}
+
+.clear-search-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: var(--ooredoo-bg-light);
+  border: none;
+  border-radius: 50%;
+  color: var(--ooredoo-grey-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.clear-search-btn:hover {
+  background: var(--ooredoo-grey-lighter);
+  color: var(--ooredoo-grey-dark);
+}
+
+/* Action Buttons */
+.kanban-filter-btn,
+.kanban-add-ticket-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: 2px solid var(--ooredoo-grey-lightest);
+  border-radius: var(--border-radius-md);
+  background: var(--ooredoo-white);
+  color: var(--ooredoo-grey-dark);
+  font-size: 14px;
+  font-weight: 700;
+  font-family: 'Futura', Arial, sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  white-space: nowrap;
+}
+
+.kanban-filter-btn:hover {
+  border-color: var(--ooredoo-red);
+  color: var(--ooredoo-red);
+  background: var(--ooredoo-bg-light);
+}
+
+.kanban-add-ticket-btn {
+  background: var(--ooredoo-red);
+  color: var(--ooredoo-white);
+  border-color: var(--ooredoo-red);
+  box-shadow: var(--ooredoo-shadow-red);
+}
+
+.kanban-add-ticket-btn:hover {
+  background: var(--ooredoo-red-dark);
+  border-color: var(--ooredoo-red-dark);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(237, 28, 36, 0.35);
+}
+
+.btn-text {
+  display: inline;
+}
+
+/* ========== BOARD ========== */
+.kanban-board {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(340px, 360px);
+  gap: 20px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 20px;
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 32px;
+}
+
+.kanban-board > .kanban-column {
+  scroll-snap-align: start;
+}
+
+.kanban-board::-webkit-scrollbar {
+  height: 12px;
+}
+
+.kanban-board::-webkit-scrollbar-track {
+  background: var(--ooredoo-grey-lightest);
+  border-radius: 6px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb {
+  background: var(--ooredoo-grey-lighter);
+  border-radius: 6px;
+}
+
+.kanban-board::-webkit-scrollbar-thumb:hover {
+  background: var(--ooredoo-grey-medium);
+}
+
+/* ========== COLUMN - FIXED FOR OVERFLOW ========== */
+.kanban-column {
+  display: flex;
+  flex-direction: column;
+  background: var(--ooredoo-white);
+  border: 2px solid var(--ooredoo-grey-lightest);
+  border-radius: var(--border-radius-lg);
+  height: calc(100vh - 220px);
+  min-height: 500px;
+  max-height: 800px;
+  box-shadow: var(--ooredoo-shadow-sm);
+  overflow: hidden; /* CRITICAL: Prevents content overflow */
+}
+
+/* Column Header */
+.column-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 18px;
+  border-bottom: 2px solid var(--ooredoo-grey-lightest);
+  border-top: 4px solid var(--ooredoo-grey-medium);
+  border-top-left-radius: var(--border-radius-lg);
+  border-top-right-radius: var(--border-radius-lg);
+  background: var(--ooredoo-bg-light);
+  flex-shrink: 0; /* IMPORTANT: Prevents header from shrinking */
+}
+
+.column-title-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+  flex: 1;
+}
+
+.column-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--border-radius-sm);
+  background: var(--ooredoo-white);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: var(--ooredoo-shadow-sm);
+}
+
+.column-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ooredoo-grey-dark);
+  font-family: 'Futura', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.column-count {
+  min-width: 28px;
+  height: 28px;
+  padding: 0 10px;
+  border-radius: var(--border-radius-xl);
+  background: var(--ooredoo-grey-lighter);
+  color: var(--ooredoo-grey-dark);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Futura', Arial, sans-serif;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.column-menu-btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: transparent;
+  border-radius: var(--border-radius-sm);
+  color: var(--ooredoo-grey-medium);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.column-menu-btn:hover {
+  background: var(--ooredoo-white);
+  color: var(--ooredoo-red);
+}
+
+/* Column Content - FIXED FOR PROPER SCROLLING */
+.column-content {
+  flex: 1 1 auto; /* Allow to grow and shrink */
+  padding: 16px;
+  overflow-y: auto; /* Enable vertical scrolling */
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0; /* CRITICAL: Allows flex item to shrink below content size */
+}
+
+.column-content::-webkit-scrollbar {
+  width: 8px;
+}
+
+.column-content::-webkit-scrollbar-track {
+  background: var(--ooredoo-bg-light);
+  border-radius: 4px;
+}
+
+.column-content::-webkit-scrollbar-thumb {
+  background: var(--ooredoo-grey-lighter);
+  border-radius: 4px;
+}
+
+.column-content::-webkit-scrollbar-thumb:hover {
+  background: var(--ooredoo-grey-medium);
+}
+
+.empty-column {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  color: var(--ooredoo-grey-light);
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Futura', Arial, sans-serif;
+  text-align: center;
+}
+
+/* ========== TICKET CARD ========== */
+.ticket-card {
+  background: var(--ooredoo-white);
+  border: 2px solid var(--ooredoo-grey-lightest);
+  border-radius: var(--border-radius-md);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: grab;
+  transition: all var(--transition-base);
+  position: relative;
+  touch-action: none;
+  flex-shrink: 0; /* IMPORTANT: Prevents cards from shrinking */
+}
+
+.ticket-card:hover {
+  border-color: var(--ooredoo-red);
+  box-shadow: var(--ooredoo-shadow-md);
+  transform: translateY(-2px);
+}
+
+.ticket-card:active {
+  cursor: grabbing;
+}
+
+.ticket-card.dragging {
+  opacity: 0.4;
+  transform: rotate(3deg) scale(0.95);
+  cursor: grabbing;
+}
+
+/* Drag Handle */
+.drag-handle {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--border-radius-sm);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ooredoo-grey-light);
+  background: transparent;
+  transition: all var(--transition-base);
+  cursor: grab;
+}
+
+.ticket-card:hover .drag-handle {
+  background: var(--ooredoo-bg-light);
+  color: var(--ooredoo-red);
+}
+
+.drag-handle:active {
+  cursor: grabbing;
+}
+
+/* Card Header */
+.ticket-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-right: 40px;
+  gap: 8px;
+}
+
+.priority-badge {
+  padding: 6px 12px;
+  border-radius: var(--border-radius-xl);
+  font-size: 11px;
+  font-weight: 700;
+  font-family: 'Futura', Arial, sans-serif;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 2px solid;
+  white-space: nowrap;
+}
+
+.priority-urgent {
+  background: var(--priority-urgent-bg);
+  color: var(--priority-urgent);
+  border-color: var(--priority-urgent);
+}
+
+.priority-high {
+  background: var(--priority-high-bg);
+  color: var(--priority-high);
+  border-color: var(--priority-high);
+}
+
+.priority-medium {
+  background: var(--priority-medium-bg);
+  color: var(--priority-medium);
+  border-color: var(--priority-medium);
+}
+
+.priority-low {
+  background: var(--priority-low-bg);
+  color: var(--priority-low);
+  border-color: var(--priority-low);
+}
+
+.ticket-menu-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: transparent;
+  border-radius: var(--border-radius-sm);
+  color: var(--ooredoo-grey-medium);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-base);
+  flex-shrink: 0;
+}
+
+.ticket-menu-btn:hover {
+  background: var(--ooredoo-bg-light);
+  color: var(--ooredoo-red);
+}
+
+/* Card Content */
+.ticket-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--ooredoo-grey-dark);
+  font-family: 'Futura', Arial, sans-serif;
+  margin: 0;
+  line-height: 1.4;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+.ticket-description {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ooredoo-grey-medium);
+  font-family: Arial, sans-serif;
+  margin: 0;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
+}
+
+/* Tags */
+.ticket-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.ticket-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: var(--ooredoo-bg-light);
+  color: var(--ooredoo-grey-dark);
+  font-size: 11px;
+  font-weight: 700;
+  border-radius: var(--border-radius-xl);
+  font-family: Arial, sans-serif;
+  border: 1px solid var(--ooredoo-grey-lightest);
+}
+
+.ticket-tag svg {
+  color: var(--ooredoo-grey-medium);
+  flex-shrink: 0;
+}
+
+/* Footer */
+.ticket-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  padding-top: 12px;
+  border-top: 2px solid var(--ooredoo-bg-light);
+}
+
+.ticket-assignee {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.assignee-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--ooredoo-red), var(--ooredoo-red-dark));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--ooredoo-white);
+  flex-shrink: 0;
+  box-shadow: var(--ooredoo-shadow-sm);
+}
+
+.assignee-name {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ooredoo-grey-dark);
+  font-family: Arial, sans-serif;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ticket-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.meta-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--ooredoo-grey-medium);
+  font-family: Arial, sans-serif;
+}
+
+.meta-item svg {
+  color: var(--ooredoo-grey-light);
+  flex-shrink: 0;
+}
+
+/* Add Card Button */
+.add-card-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 14px;
+  background: transparent;
+  border: 2px dashed var(--ooredoo-grey-lighter);
+  border-radius: var(--border-radius-md);
+  color: var(--ooredoo-grey-medium);
+  font-size: 13px;
+  font-weight: 700;
+  font-family: 'Futura', Arial, sans-serif;
+  cursor: pointer;
+  transition: all var(--transition-base);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-top: 4px;
+  flex-shrink: 0; /* IMPORTANT: Prevents button from shrinking */
+}
+
+.add-card-btn:hover {
+  border-color: var(--ooredoo-red);
+  border-style: solid;
+  color: var(--ooredoo-red);
+  background: rgba(237, 28, 36, 0.05);
+}
+
+/* Drag Overlay */
+.dragging-overlay {
+  width: 340px;
+  max-width: 90vw;
+  box-shadow: var(--ooredoo-shadow-lg);
+  transform: rotate(5deg);
+  cursor: grabbing;
+  opacity: 0.95;
+}
+
+/* ========== RESPONSIVE - TABLET ========== */
+@media (max-width: 1024px) {
+  .kanban-content {
+    padding: 20px 24px 24px;
+  }
+
+  .kanban-title {
+    font-size: 28px;
+  }
+
+  .kanban-board {
+    grid-auto-columns: minmax(320px, 340px);
+    gap: 16px;
+  }
+
+  .kanban-search-box {
+    min-width: 240px;
+  }
+
+  .kanban-column {
+    height: calc(100vh - 200px);
+    min-height: 450px;
+  }
+}
+
+/* ========== RESPONSIVE - MOBILE ========== */
+@media (max-width: 768px) {
+  .kanban-content {
+    padding: 16px;
+  }
+
+  .kanban-header {
+    margin-bottom: 16px;
+    gap: 16px;
+  }
+
+  .kanban-header-left {
+    width: 100%;
+  }
+
+  .kanban-title {
+    font-size: 24px;
+  }
+
+  .kanban-subtitle {
+    font-size: 13px;
+  }
+
+  .kanban-header-actions {
+    width: 100%;
+    flex-direction: column;
+  }
+
+  .kanban-search-box {
+    min-width: 100%;
+    width: 100%;
+  }
+
+  .kanban-filter-btn,
+  .kanban-add-ticket-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .kanban-board {
+    grid-auto-columns: calc(100vw - 48px);
+    gap: 16px;
+    padding-bottom: 16px;
+    scroll-snap-type: x mandatory;
+  }
+
+  .kanban-column {
+    height: calc(100vh - 240px);
+    min-height: 400px;
+    max-height: 600px;
+  }
+
+  .column-header {
+    padding: 14px 16px;
+  }
+
+  .column-content {
+    padding: 14px;
+  }
+
+  .ticket-card {
+    padding: 14px;
+  }
+
+  .ticket-footer {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+
+  .ticket-meta {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
+
+/* ========== RESPONSIVE - SMALL MOBILE ========== */
+@media (max-width: 480px) {
+  .kanban-content {
+    padding: 12px;
+  }
+
+  .kanban-title {
+    font-size: 20px;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
+  .kanban-filter-btn,
+  .kanban-add-ticket-btn {
+    padding: 12px 16px;
+    flex: 1;
+  }
+
+  .kanban-board {
+    grid-auto-columns: calc(100vw - 32px);
+    gap: 12px;
+  }
+
+  .kanban-column {
+    height: calc(100vh - 220px);
+    min-height: 350px;
+  }
+
+  .column-header {
+    padding: 12px 14px;
+  }
+
+  .column-icon {
+    width: 32px;
+    height: 32px;
+  }
+
+  .column-title {
+    font-size: 13px;
+  }
+
+  .column-count {
+    min-width: 24px;
+    height: 24px;
+    font-size: 12px;
+  }
+
+  .column-content {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .ticket-card {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .drag-handle {
+    width: 28px;
+    height: 28px;
+    top: 10px;
+    right: 10px;
+  }
+
+  .ticket-header {
+    padding-right: 36px;
+  }
+
+  .priority-badge {
+    padding: 5px 10px;
+    font-size: 10px;
+  }
+
+  .ticket-title {
+    font-size: 14px;
+  }
+
+  .ticket-description {
+    font-size: 12px;
+  }
+
+  .ticket-tag {
+    font-size: 10px;
+    padding: 4px 8px;
+  }
+
+  .assignee-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  .assignee-name {
+    font-size: 11px;
+  }
+
+  .meta-item {
+    font-size: 11px;
+  }
+
+  .add-card-btn {
+    padding: 12px;
+    font-size: 12px;
+  }
+}
+
+/* ========== ACCESSIBILITY ========== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+.kanban-search-box:focus-within,
+.kanban-filter-btn:focus-visible,
+.kanban-add-ticket-btn:focus-visible,
+.column-menu-btn:focus-visible,
+.ticket-card:focus-visible,
+.ticket-menu-btn:focus-visible,
+.add-card-btn:focus-visible {
+  outline: 3px solid var(--ooredoo-red);
+  outline-offset: 2px;
+}
+
+/* ========== PRINT STYLES ========== */
+@media print {
+  .kanban-header-actions,
+  .column-menu-btn,
+  .ticket-menu-btn,
+  .drag-handle,
+  .add-card-btn {
+    display: none !important;
+  }
+
+  .kanban-board {
+    display: block;
+  }
+
+  .kanban-column {
+    break-inside: avoid;
+    page-break-inside: avoid;
+    height: auto;
+    max-height: none;
+    margin-bottom: 20px;
+  }
+
+  .ticket-card {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+}
+    

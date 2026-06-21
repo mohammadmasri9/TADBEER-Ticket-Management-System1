@@ -1,0 +1,26 @@
+[
+  {
+    "_id": { "$oid": "666100000000000000000001" },
+    "name": "IT Support",
+    "description": "Handles workstation, VPN, email, and internal application support.",
+    "managerId": { "$oid": "666200000000000000000002" },
+    "createdAt": { "$date": "2026-06-01T08:00:00.000Z" },
+    "updatedAt": { "$date": "2026-06-01T08:00:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666100000000000000000002" },
+    "name": "Security Operations",
+    "description": "Handles access control, suspicious activity, and security incidents.",
+    "managerId": { "$oid": "666200000000000000000003" },
+    "createdAt": { "$date": "2026-06-01T08:05:00.000Z" },
+    "updatedAt": { "$date": "2026-06-01T08:05:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666100000000000000000003" },
+    "name": "Billing",
+    "description": "Handles invoices, account plans, and payment support requests.",
+    "managerId": { "$oid": "666200000000000000000004" },
+    "createdAt": { "$date": "2026-06-01T08:10:00.000Z" },
+    "updatedAt": { "$date": "2026-06-01T08:10:00.000Z" }
+  }
+]

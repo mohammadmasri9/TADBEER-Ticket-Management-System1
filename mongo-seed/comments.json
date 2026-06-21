@@ -1,0 +1,42 @@
+[
+  {
+    "_id": { "$oid": "666400000000000000000001" },
+    "ticketId": { "$oid": "666300000000000000000001" },
+    "userId": { "$oid": "666200000000000000000007" },
+    "content": "I confirmed the new password works for email and the portal.",
+    "attachments": [],
+    "deletedAt": null,
+    "createdAt": { "$date": "2026-06-18T08:45:00.000Z" },
+    "updatedAt": { "$date": "2026-06-18T08:45:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666400000000000000000002" },
+    "ticketId": { "$oid": "666300000000000000000001" },
+    "userId": { "$oid": "666200000000000000000005" },
+    "content": "I will reset the VPN profile and ask the user to reconnect.",
+    "attachments": [],
+    "deletedAt": null,
+    "createdAt": { "$date": "2026-06-18T09:10:00.000Z" },
+    "updatedAt": { "$date": "2026-06-18T09:10:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666400000000000000000003" },
+    "ticketId": { "$oid": "666300000000000000000002" },
+    "userId": { "$oid": "666200000000000000000003" },
+    "content": "Please verify the mailbox owner list before enforcement.",
+    "attachments": [],
+    "deletedAt": null,
+    "createdAt": { "$date": "2026-06-20T09:20:00.000Z" },
+    "updatedAt": { "$date": "2026-06-20T09:20:00.000Z" }
+  },
+  {
+    "_id": { "$oid": "666400000000000000000004" },
+    "ticketId": { "$oid": "666300000000000000000003" },
+    "userId": { "$oid": "666200000000000000000004" },
+    "content": "Waiting for account plan confirmation before regenerating the invoice.",
+    "attachments": [],
+    "deletedAt": null,
+    "createdAt": { "$date": "2026-06-20T12:10:00.000Z" },
+    "updatedAt": { "$date": "2026-06-20T12:10:00.000Z" }
+  }
+]
