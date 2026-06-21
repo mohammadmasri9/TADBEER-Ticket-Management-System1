@@ -577,6 +577,10 @@ router.post("/", async (req: any, res) => {
       const managerId = dept.managerId?.toString?.() || "";
       if (managerId && isValidObjectId(managerId)) {
         finalAssignee = new mongoose.Types.ObjectId(managerId);
+      } else {
+        return res.status(400).json({
+          message: "Selected department has no manager assigned. Please assign a manager before creating a ticket.",
+        });
       }
     }
 
