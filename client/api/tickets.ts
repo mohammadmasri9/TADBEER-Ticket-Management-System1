@@ -28,6 +28,13 @@ export interface TicketDTO {
   departmentId?: any;
   watchers?: TicketWatcherDTO[];
 
+  attachments?: Array<{
+    filename: string;
+    url: string;
+    mimetype?: string;
+    size?: number;
+    uploadedAt?: string;
+  }>;
   dueDate?: string;
   tags?: string[];
   favoritedBy?: any[];

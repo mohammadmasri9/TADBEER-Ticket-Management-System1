@@ -46,61 +46,6 @@ interface DashboardStats {
 }
 
 /* =========================
-   LOCAL STORAGE STORE
-========================= */
-const LS_KEY = "tadbeer_ticket_actions_v1";
-
-type TicketActionState = {
-  favorites: string[];
-  archived: string[];
-  deleted: string[];
-};
-
-const safeParse = <T,>(val: string | null, fallback: T): T => {
-  try {
-    return val ? (JSON.parse(val) as T) : fallback;
-  } catch {
-    return fallback;
-  }
-};
-
-const getActionState = (): TicketActionState =>
-  safeParse<TicketActionState>(localStorage.getItem(LS_KEY), {
-    favorites: [],
-    archived: [],
-    deleted: [],
-  });
-
-const setActionState = (next: TicketActionState) => {
-  localStorage.setItem(LS_KEY, JSON.stringify(next));
-};
-
-const includesId = (list: string[], id: string) => list.includes(id);
-
-const toggleFavoriteLS = (id: string) => {
-  const s = getActionState();
-  const favorites = includesId(s.favorites, id)
-    ? s.favorites.filter((x) => x !== id)
-    : [...s.favorites, id];
-  setActionState({ ...s, favorites });
-};
-
-const archiveTicketLS = (id: string) => {
-  const s = getActionState();
-  if (includesId(s.deleted, id)) return; // don't archive deleted
-  if (!includesId(s.archived, id)) setActionState({ ...s, archived: [...s.archived, id] });
-};
-
-const deleteTicketSoftLS = (id: string) => {
-  const s = getActionState();
-  const deleted = includesId(s.deleted, id) ? s.deleted : [...s.deleted, id];
-  // when deleted -> remove from archived + favorites
-  const archived = s.archived.filter((x) => x !== id);
-  const favorites = s.favorites.filter((x) => x !== id);
-  setActionState({ favorites, archived, deleted });
-};
-
-/* =========================
    UTILS
 ========================= */
 const normalizeId = (val: any): string => {
