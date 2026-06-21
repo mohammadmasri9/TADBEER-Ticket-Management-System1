@@ -1,6 +1,8 @@
 // server/src/services/ai/aiService.ts
 import { z } from "zod";
-import { openai, aiConfig } from "./aiClient";
+import { openai, aiConfig, hasAIKey } from "./aiClient";
+import Ticket from "../../models/Ticket.model";
+import Notification from "../../models/Notification.model";
 import {
   SYSTEM_PROMPT_TICKET_ASSIST,
   SYSTEM_PROMPT_TICKET_SUGGEST,
@@ -32,6 +34,10 @@ function parseJson(text: string) {
 }
 
 async function runJson(systemPrompt: string, payload: any) {
+  if (!hasAIKey()) {
+    throw new Error("OPENROUTER_API_KEY is not configured");
+  }
+
   // OpenRouter/OpenAI compatible via openai client config
   const r = await openai.responses.create({
     model: aiConfig.model,
@@ -82,6 +88,70 @@ function fallbackChat(reason?: string): ChatResult {
       : "AI is currently unavailable. Tell me what you're trying to do, and I’ll help manually.",
     steps: ["Explain the goal.", "Share the error/message.", "Tell me what you tried."],
     clarifyingQuestion: "What page are you on and what exactly are you trying to achieve?",
+  };
+}
+
+async function localSmartChat(input: {
+  messages: Array<{ role: "user" | "assistant"; content: string }>;
+  pageContext?: any;
+  auth?: { userId: string; role: string };
+}): Promise<ChatResult> {
+  const last = input.messages[input.messages.length - 1]?.content || "";
+  const q = last.toLowerCase();
+  const userId = input.auth?.userId || "";
+  const role = input.auth?.role || "";
+
+  const filter: any = { deletedAt: null, archivedAt: null };
+  if (role !== "admin" && userId) {
+    filter.$or = [{ createdBy: userId }, { assignee: userId }, { "watchers.userId": userId }];
+  }
+
+  if (q.includes("notification")) {
+    const unread = userId ? await Notification.countDocuments({ userId, isRead: false }) : 0;
+    return {
+      reply: `You have ${unread} unread notification${unread === 1 ? "" : "s"}.`,
+      steps: ["Open Notifications from the header/sidebar.", "Use Mark All Read after reviewing important items.", "Click a notification to jump to its ticket."],
+    };
+  }
+
+  if (q.includes("urgent") || q.includes("priority")) {
+    const urgent = await Ticket.find({ ...filter, priority: "urgent" })
+      .sort({ updatedAt: -1 })
+      .limit(5)
+      .select("title status priority")
+      .lean();
+    return {
+      reply: urgent.length ? `I found ${urgent.length} urgent ticket${urgent.length === 1 ? "" : "s"} you can review first.` : "I did not find urgent tickets in your current scope.",
+      steps: urgent.length
+        ? urgent.map((ticket: any) => `${ticket.title} (${ticket.status})`)
+        : ["Check active tickets.", "Use priority filters.", "Create or escalate a ticket if impact is high."],
+    };
+  }
+
+  if (q.includes("ticket") || q.includes("status") || q.includes("dashboard")) {
+    const tickets = await Ticket.find(filter).select("status priority").lean();
+    const count = (status: string) => tickets.filter((ticket: any) => ticket.status === status).length;
+    return {
+      reply: `Your current ticket scope has ${tickets.length} ticket${tickets.length === 1 ? "" : "s"}.`,
+      steps: [
+        `Open: ${count("open")}`,
+        `In progress: ${count("in-progress")}`,
+        `Pending: ${count("pending")}`,
+        `Resolved: ${count("resolved")}`,
+        `Closed: ${count("closed")}`,
+      ],
+      clarifyingQuestion: "Do you want me to focus on open, assigned, urgent, or overdue tickets?",
+    };
+  }
+
+  return {
+    reply: "I can help with tickets, notifications, priorities, status summaries, and next steps.",
+    steps: [
+      "Ask: how many open tickets do I have?",
+      "Ask: show urgent tickets.",
+      "Ask from a ticket page: what should I do next?",
+    ],
+    clarifyingQuestion: "What would you like to check in Tadbeer?",
   };
 }
 
@@ -159,6 +229,10 @@ export async function chatAIService(input: {
   if (!msgs.length) return fallbackChat("Empty messages");
 
   try {
+    if (!hasAIKey()) {
+      return localSmartChat({ ...input, messages: msgs });
+    }
+
     const payload = {
       pageContext: input.pageContext || null,
       auth: input.auth || null,
@@ -172,12 +246,12 @@ export async function chatAIService(input: {
     if (!parsed.success) {
       console.error("Chat validation failed:", parsed.error?.issues);
       console.error("Model raw text:", text);
-      return fallbackChat("Invalid JSON from model");
+      return localSmartChat({ ...input, messages: msgs });
     }
 
     return parsed.data;
   } catch (err: any) {
     console.error("AI chat error:", err?.message || err);
-    return fallbackChat(err?.message || "AI error");
+    return localSmartChat({ ...input, messages: msgs });
   }
 }
