@@ -3,7 +3,7 @@ import { Router } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
 
-import Ticket from "../models/Ticket.model";
+import Ticket, { TicketCategory, TicketPriority } from "../models/Ticket.model";
 import Comment from "../models/Comments";
 import Notification from "../models/Notification.model";
 import User from "../models/User.model";
@@ -147,6 +147,44 @@ const createTicketSchema = z.object({
 
 const updateTicketSchema = createTicketSchema.partial();
 
+const smartTriageSchema = z.object({
+  title: z.string().min(3).max(200),
+  description: z.string().min(5).max(5000),
+});
+
+function tokenizeSmartText(...parts: string[]) {
+  return parts
+    .join(" ")
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function includesAny(tokens: string[], words: string[]) {
+  return words.some((word) => tokens.includes(word) || tokens.some((token) => token.includes(word)));
+}
+
+function inferCategory(tokens: string[]): TicketCategory {
+  if (includesAny(tokens, ["mfa", "security", "password", "access", "phishing", "breach", "permission"])) return "Security";
+  if (includesAny(tokens, ["invoice", "billing", "payment", "account", "subscription", "plan"])) return "Account";
+  if (includesAny(tokens, ["feature", "enhancement", "add", "request", "improve"])) return "Feature";
+  if (includesAny(tokens, ["bug", "error", "crash", "broken", "failed", "exception"])) return "Bug";
+  return "Technical";
+}
+
+function inferPriority(tokens: string[]): TicketPriority {
+  if (includesAny(tokens, ["urgent", "critical", "down", "outage", "breach", "blocked", "production"])) return "urgent";
+  if (includesAny(tokens, ["cannot", "failed", "security", "many", "all", "important"])) return "high";
+  if (includesAny(tokens, ["request", "question", "update", "change"])) return "medium";
+  return "low";
+}
+
+function scoreText(tokens: string[], text: string) {
+  const normalized = String(text || "").toLowerCase();
+  return tokens.reduce((score, token) => score + (normalized.includes(token) ? 1 : 0), 0);
+}
+
 /* =========================
    Routes
 ========================= */
@@ -154,6 +192,95 @@ const updateTicketSchema = createTicketSchema.partial();
 /**
  * ✅ Manager Inbox
  */
+router.post("/smart-triage", async (req: any, res) => {
+  try {
+    const data = smartTriageSchema.parse(req.body);
+    const tokens = tokenizeSmartText(data.title, data.description);
+
+    const category = inferCategory(tokens);
+    const priority = inferPriority(tokens);
+
+    const [departments, users, activeTickets] = await Promise.all([
+      Department.find().populate("managerId", "name email role departmentId department expertise status").lean(),
+      User.find({ role: { $in: ["agent", "manager"] } })
+        .select("_id name email role departmentId department expertise status")
+        .lean(),
+      Ticket.find({ deletedAt: null, archivedAt: null, status: { $in: ["open", "in-progress", "pending"] } })
+        .select("assignee departmentId")
+        .lean(),
+    ]);
+
+    const categoryHints: Record<TicketCategory, string[]> = {
+      Technical: ["it", "technical", "support", "network", "vpn", "email", "system"],
+      Security: ["security", "access", "mfa", "permission", "phishing", "audit"],
+      Feature: ["product", "development", "feature", "enhancement", "reports", "dashboard"],
+      Account: ["billing", "account", "invoice", "payment", "subscription", "plan"],
+      Bug: ["it", "technical", "bug", "error", "crash", "issue"],
+    };
+
+    const deptScores = departments.map((dept: any) => {
+      const deptText = `${dept.name || ""} ${dept.description || ""}`;
+      const hintScore = scoreText(categoryHints[category], deptText) * 3;
+      const contentScore = scoreText(tokens, deptText);
+      return { dept, score: hintScore + contentScore };
+    });
+
+    deptScores.sort((a, b) => b.score - a.score || String(a.dept.name).localeCompare(String(b.dept.name)));
+    const selectedDept = deptScores[0]?.dept || departments[0] || null;
+    const selectedDeptId = selectedDept?._id?.toString?.() || "";
+
+    const workload = new Map<string, number>();
+    for (const ticket of activeTickets as any[]) {
+      const id = normalizeId(ticket.assignee);
+      if (id) workload.set(id, (workload.get(id) || 0) + 1);
+    }
+
+    const deptUsers = users.filter((user: any) => normalizeId(user.departmentId) === selectedDeptId);
+    const agentCandidates = deptUsers.length ? deptUsers : users;
+
+    const rankedAssignees = agentCandidates
+      .map((user: any) => {
+        const expertiseScore = Array.isArray(user.expertise)
+          ? user.expertise.reduce((sum: number, item: string) => sum + scoreText(tokens, item) * 4, 0)
+          : 0;
+        const roleScore = user.role === "agent" ? 4 : 2;
+        const statusScore = user.status === "available" ? 3 : user.status === "busy" ? 1 : 0;
+        const loadPenalty = workload.get(user._id.toString()) || 0;
+        const deptScore = normalizeId(user.departmentId) === selectedDeptId ? 5 : 0;
+        return { user, score: expertiseScore + roleScore + statusScore + deptScore - loadPenalty, activeTickets: loadPenalty };
+      })
+      .sort((a, b) => b.score - a.score || a.activeTickets - b.activeTickets);
+
+    const bestAssignee = rankedAssignees[0]?.user || (selectedDept as any)?.managerId || null;
+
+    return res.json({
+      category,
+      priority,
+      department: selectedDept
+        ? { _id: selectedDept._id, name: selectedDept.name, managerId: selectedDept.managerId || null }
+        : null,
+      assignee: bestAssignee
+        ? {
+            _id: bestAssignee._id,
+            name: bestAssignee.name,
+            email: bestAssignee.email,
+            role: bestAssignee.role,
+            activeTickets: workload.get(bestAssignee._id.toString()) || 0,
+          }
+        : null,
+      reasons: [
+        `Detected ${category} category from ticket keywords.`,
+        `Suggested ${priority} priority based on urgency and impact words.`,
+        selectedDept ? `Matched department "${selectedDept.name}".` : "No department was available.",
+        bestAssignee ? "Suggested assignee from expertise, availability, and workload." : "No assignee candidate was available.",
+      ],
+    });
+  } catch (err: any) {
+    if (err?.name === "ZodError") return res.status(400).json({ message: err.errors });
+    return res.status(500).json({ message: err.message || "Server error" });
+  }
+});
+
 router.get("/inbox", requireRole("manager", "admin"), async (req: any, res) => {
   const deptId = getUserDeptId(req);
 

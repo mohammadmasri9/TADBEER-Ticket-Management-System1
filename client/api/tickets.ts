@@ -84,6 +84,24 @@ export interface CreateTicketPayload {
 
 export type UpdateTicketPayload = Partial<CreateTicketPayload>;
 
+export interface SmartTriageResponse {
+  category: TicketCategory;
+  priority: TicketPriority;
+  department?: {
+    _id: string;
+    name: string;
+    managerId?: any;
+  } | null;
+  assignee?: {
+    _id: string;
+    name: string;
+    email: string;
+    role: string;
+    activeTickets: number;
+  } | null;
+  reasons: string[];
+}
+
 /**
  * ✅ Always normalize to TicketDTO[]
  * Supports:
@@ -106,6 +124,14 @@ export async function getTickets(params?: Record<string, any>) {
 export async function getTicketById(id: string): Promise<TicketDetailsResponse> {
   const res = await api.get(`/api/tickets/${id}`);
   return res.data as TicketDetailsResponse;
+}
+
+export async function smartTriageTicket(params: {
+  title: string;
+  description: string;
+}): Promise<SmartTriageResponse> {
+  const res = await api.post("/api/tickets/smart-triage", params);
+  return res.data as SmartTriageResponse;
 }
 
 export async function updateTicketStatus(id: string, status: TicketStatus) {

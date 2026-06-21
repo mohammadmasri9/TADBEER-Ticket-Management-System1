@@ -40,11 +40,10 @@ import {
 } from "lucide-react";
 
 // ✅ API
-import { createTicket, TicketCategory, TicketPriority } from "../../api/tickets";
+import { createTicket, smartTriageTicket, TicketCategory, TicketPriority } from "../../api/tickets";
 import { getDepartments, DepartmentDTO } from "../../api/departments";
 
 // ✅ AI API (make sure you created: client/api/ai.ts)
-import { suggestTicketAI } from "../../api/ai";
 
 // ============================================================================
 // TYPES
@@ -86,6 +85,11 @@ type AISuggestState = {
   clarifyingQuestion?: string;
   priority: TicketPriority;
   category: TicketCategory;
+  departmentName?: string;
+  departmentId?: string;
+  assigneeName?: string;
+  assigneeRole?: string;
+  reasons?: string[];
 };
 
 // ============================================================================
@@ -441,17 +445,21 @@ const CreateTicket: React.FC = () => {
 
     setAiLoading(true);
     try {
-      const res = await suggestTicketAI({
+      const smart = await smartTriageTicket({
         title: formData.title.trim(),
         description: formData.description.trim(),
       });
 
       const next: AISuggestState = {
-        priority: res.priority,
-        category: res.category,
-        shortSummary: res.shortSummary,
-        steps: Array.isArray(res.steps) ? res.steps : [],
-        clarifyingQuestion: res.clarifyingQuestion,
+        priority: smart.priority,
+        category: smart.category,
+        shortSummary: `Smart triage recommends ${smart.category} / ${smart.priority}.`,
+        steps: Array.isArray(smart.reasons) ? smart.reasons : [],
+        departmentName: smart.department?.name,
+        departmentId: smart.department?._id,
+        assigneeName: smart.assignee?.name || smart.assignee?.email,
+        assigneeRole: smart.assignee?.role,
+        reasons: smart.reasons || [],
       };
 
       setAiData(next);
@@ -462,12 +470,14 @@ const CreateTicket: React.FC = () => {
         ...prev,
         priority: next.priority,
         category: next.category,
+        departmentId: next.departmentId || prev.departmentId,
       }));
 
       // ✅ FIX: remove category error key completely (don’t keep empty key)
       setErrors((prev) => {
         const nextErrors = { ...prev };
         delete nextErrors.category;
+        if (next.departmentId) delete nextErrors.departmentId;
         return nextErrors;
       });
 
@@ -893,10 +903,10 @@ const CreateTicket: React.FC = () => {
                 >
                   <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 8 }}>
                     <Sparkles size={18} />
-                    <strong>AI Suggestions</strong>
+                    <strong>Smart Triage</strong>
                     {aiApplied && (
                       <span style={{ fontSize: 12, opacity: 0.8 }}>
-                        (Applied to Category & Priority)
+                        (Applied to Category, Priority & Department)
                       </span>
                     )}
                   </div>
@@ -904,6 +914,22 @@ const CreateTicket: React.FC = () => {
                   <div style={{ fontSize: 13, opacity: 0.95, marginBottom: 8 }}>
                     <strong>Summary:</strong> {aiData.shortSummary}
                   </div>
+
+                  {(aiData.departmentName || aiData.assigneeName) && (
+                    <div style={{ fontSize: 13, opacity: 0.95, marginBottom: 10 }}>
+                      {aiData.departmentName && (
+                        <div>
+                          <strong>Department:</strong> {aiData.departmentName}
+                        </div>
+                      )}
+                      {aiData.assigneeName && (
+                        <div>
+                          <strong>Best assignee:</strong> {aiData.assigneeName}
+                          {aiData.assigneeRole ? ` (${aiData.assigneeRole})` : ""}
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {aiData.clarifyingQuestion && (
                     <div style={{ fontSize: 13, marginBottom: 10, color: "#7c2d12" }}>
