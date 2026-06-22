@@ -1,8 +1,10 @@
 // server/src/services/ai/aiService.ts
 import { z } from "zod";
+import mongoose from "mongoose";
 import { openai, aiConfig, hasAIKey } from "./aiClient";
 import Ticket from "../../models/Ticket.model";
 import Notification from "../../models/Notification.model";
+import Department from "../../models/departments.model";
 import {
   SYSTEM_PROMPT_TICKET_ASSIST,
   SYSTEM_PROMPT_TICKET_SUGGEST,
@@ -88,6 +90,146 @@ function fallbackChat(reason?: string): ChatResult {
       : "AI is currently unavailable. Tell me what you're trying to do, and I’ll help manually.",
     steps: ["Explain the goal.", "Share the error/message.", "Tell me what you tried."],
     clarifyingQuestion: "What page are you on and what exactly are you trying to achieve?",
+  };
+}
+
+function wantsToCreateTicket(text: string) {
+  const q = text.toLowerCase();
+  return (
+    q.includes("create ticket") ||
+    q.includes("open ticket") ||
+    q.includes("raise ticket") ||
+    q.includes("submit ticket") ||
+    q.includes("new ticket")
+  );
+}
+
+function ticketTokens(text: string) {
+  return text
+    .toLowerCase()
+    .replace(/[^a-z0-9\s-]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean);
+}
+
+function guessTicketCategory(text: string): "Technical" | "Security" | "Feature" | "Account" | "Bug" {
+  const tokens = ticketTokens(text);
+  const has = (words: string[]) => words.some((word) => tokens.includes(word) || tokens.some((token) => token.includes(word)));
+  if (has(["mfa", "security", "password", "access", "phishing", "breach", "permission"])) return "Security";
+  if (has(["invoice", "billing", "payment", "account", "subscription", "plan"])) return "Account";
+  if (has(["feature", "enhancement", "add", "request", "improve"])) return "Feature";
+  if (has(["bug", "error", "crash", "broken", "failed", "exception"])) return "Bug";
+  return "Technical";
+}
+
+function guessTicketPriority(text: string): "low" | "medium" | "high" | "urgent" {
+  const tokens = ticketTokens(text);
+  const has = (words: string[]) => words.some((word) => tokens.includes(word) || tokens.some((token) => token.includes(word)));
+  if (has(["urgent", "critical", "down", "outage", "breach", "blocked", "production"])) return "urgent";
+  if (has(["cannot", "failed", "security", "many", "all", "important"])) return "high";
+  if (has(["request", "question", "update", "change"])) return "medium";
+  return "low";
+}
+
+function cleanTicketText(text: string) {
+  return text
+    .replace(/^(please\s+)?(create|open|raise|submit)\s+(a\s+)?(new\s+)?ticket\s*(for|about|to)?\s*/i, "")
+    .trim();
+}
+
+async function createTicketFromChat(input: {
+  message: string;
+  auth?: { userId: string; role: string };
+}): Promise<ChatResult> {
+  const userId = input.auth?.userId || "";
+  if (!userId || !mongoose.isValidObjectId(userId)) {
+    return {
+      reply: "I can create tickets after you log in with a valid user session.",
+      steps: ["Log in again.", "Ask me to create the ticket with a short issue description."],
+    };
+  }
+
+  const issue = cleanTicketText(input.message);
+  if (issue.length < 8) {
+    return {
+      reply: "I can create the ticket, but I need a little more detail first.",
+      steps: ["Include what happened.", "Mention who is affected.", "Add any error message if available."],
+      clarifyingQuestion: "What should the ticket be about?",
+    };
+  }
+
+  const category = guessTicketCategory(issue);
+  const priority = guessTicketPriority(issue);
+  const title = issue.length > 80 ? issue.slice(0, 77).trim() + "..." : issue;
+  const description = issue.length >= 20 ? issue : `User requested help with: ${issue}`;
+
+  const departments = await Department.find().select("_id name description managerId").lean();
+  const categoryHints: Record<string, string[]> = {
+    Technical: ["it", "technical", "support", "network", "vpn", "email", "system"],
+    Security: ["security", "access", "mfa", "permission", "phishing", "audit"],
+    Feature: ["product", "development", "feature", "enhancement", "reports", "dashboard"],
+    Account: ["billing", "account", "invoice", "payment", "subscription", "plan"],
+    Bug: ["it", "technical", "bug", "error", "crash", "issue"],
+  };
+
+  const loweredIssue = issue.toLowerCase();
+  const scoredDepartments = departments
+    .map((dept: any) => {
+      const deptText = `${dept.name || ""} ${dept.description || ""}`.toLowerCase();
+      const hintScore = (categoryHints[category] || []).reduce((sum, word) => sum + (deptText.includes(word) ? 3 : 0), 0);
+      const contentScore = ticketTokens(loweredIssue).reduce((sum, token) => sum + (deptText.includes(token) ? 1 : 0), 0);
+      return { dept, score: hintScore + contentScore };
+    })
+    .sort((a, b) => b.score - a.score || String(a.dept.name).localeCompare(String(b.dept.name)));
+
+  const department = scoredDepartments[0]?.dept;
+  if (!department?._id) {
+    return {
+      reply: "I could not create the ticket because there are no departments configured.",
+      steps: ["Create at least one department.", "Assign a manager to that department.", "Try asking me again."],
+    };
+  }
+
+  const managerId = department.managerId?.toString?.() || "";
+  if (!managerId || !mongoose.isValidObjectId(managerId)) {
+    return {
+      reply: `I found the ${department.name} department, but it has no manager assigned, so I did not create the ticket.`,
+      steps: ["Assign a manager to the department.", "Then ask me to create the ticket again."],
+    };
+  }
+
+  const ticket = await Ticket.create({
+    title,
+    description,
+    category,
+    priority,
+    status: "open",
+    tags: ["chatbot-created"],
+    departmentId: new mongoose.Types.ObjectId(department._id.toString()),
+    createdBy: new mongoose.Types.ObjectId(userId),
+    assignee: new mongoose.Types.ObjectId(managerId),
+    watchers: [],
+    deletedAt: null,
+    archivedAt: null,
+  });
+
+  await Notification.create({
+    userId: managerId,
+    type: "ticket_assigned",
+    title: "New Ticket Assigned",
+    message: `A new chatbot-created ticket "${ticket.title}" has been assigned to you.`,
+    link: `/tickets/${ticket._id}`,
+    isRead: false,
+  });
+
+  return {
+    reply: `Created ticket "${ticket.title}" and assigned it to the ${department.name} manager.`,
+    steps: [
+      `Ticket ID: ${ticket._id}`,
+      `Category: ${category}`,
+      `Priority: ${priority}`,
+      `Open: /tickets/${ticket._id}`,
+    ],
   };
 }
 
@@ -227,6 +369,14 @@ export async function chatAIService(input: {
 }): Promise<ChatResult & { toolResults?: any[] }> {
   const msgs = Array.isArray(input.messages) ? input.messages.slice(-20) : [];
   if (!msgs.length) return fallbackChat("Empty messages");
+  const lastMessage = msgs[msgs.length - 1]?.content || "";
+
+  if (wantsToCreateTicket(lastMessage)) {
+    return createTicketFromChat({
+      message: lastMessage,
+      auth: input.auth,
+    });
+  }
 
   try {
     if (!hasAIKey()) {
