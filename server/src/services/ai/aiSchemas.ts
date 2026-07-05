@@ -28,3 +28,15 @@ export const ChatSchema = z.object({
   clarifyingQuestion: z.string().min(2).max(250).optional(),
 });
 export type ChatResult = z.infer<typeof ChatSchema>;
+
+export const ResolutionSummarySchema = z.object({
+  resolutionSummary: z.string().min(5).max(600),
+  customerMessage: z.string().min(5).max(600),
+});
+export type ResolutionSummaryResult = z.infer<typeof ResolutionSummarySchema>;
+
+export const SentimentSchema = z.object({
+  sentiment: z.enum(["neutral", "frustrated", "angry"]),
+  escalate: z.boolean(),
+});
+export type SentimentResult = z.infer<typeof SentimentSchema>;

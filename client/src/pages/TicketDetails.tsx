@@ -610,6 +610,23 @@ User Question: ${q}
             <span className={`ticket-chip status-${status}`}>Status: {status}</span>
           </div>
 
+          {ticket.resolution && (
+            <div
+              style={{
+                marginTop: 14,
+                padding: 12,
+                borderRadius: 12,
+                border: "1px solid rgba(16,185,129,0.3)",
+                background: "rgba(236,253,245,0.6)",
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: 13, marginBottom: 4, color: "#065f46" }}>
+                Resolution Summary
+              </div>
+              <div style={{ fontSize: 13, color: "#065f46" }}>{ticket.resolution}</div>
+            </div>
+          )}
+
           {/* Manager Assign Section */}
           {isManager && (
             <div
@@ -867,6 +884,21 @@ User Question: ${q}
                       {c.createdAt && (
                         <span style={{ marginLeft: 8, opacity: 0.7 }}>
                           • {new Date(c.createdAt).toLocaleString()}
+                        </span>
+                      )}
+                      {(c.sentiment === "frustrated" || c.sentiment === "angry") && (
+                        <span
+                          style={{
+                            marginLeft: 8,
+                            fontSize: 11,
+                            fontWeight: 700,
+                            padding: "2px 8px",
+                            borderRadius: 999,
+                            background: c.sentiment === "angry" ? "#fee2e2" : "#fff7ed",
+                            color: c.sentiment === "angry" ? "#991b1b" : "#9a3412",
+                          }}
+                        >
+                          {c.sentiment === "angry" ? "Angry" : "Frustrated"}
                         </span>
                       )}
                     </strong>

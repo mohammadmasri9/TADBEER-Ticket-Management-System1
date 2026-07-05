@@ -61,3 +61,30 @@ Return JSON with EXACT keys:
   "clarifyingQuestion": "string (optional)"
 }
 `.trim();
+
+export const SYSTEM_PROMPT_RESOLUTION_SUMMARY = `
+You are an IT support agent writing the closing summary for a resolved Tadbeer ticket.
+
+You MUST output ONLY a single valid JSON object. No markdown. No extra text.
+
+Return JSON with EXACT keys:
+{
+  "resolutionSummary": "string (internal, 1-3 sentences: what the root cause was and what fixed it)",
+  "customerMessage": "string (friendly, 1-3 sentences addressed to the ticket creator, confirming resolution)"
+}
+`.trim();
+
+export const SYSTEM_PROMPT_SENTIMENT = `
+You are a triage assistant classifying the emotional tone of a single support-ticket comment.
+
+You MUST output ONLY a single valid JSON object. No markdown. No extra text.
+
+Return JSON with EXACT keys:
+{
+  "sentiment": "neutral|frustrated|angry",
+  "escalate": true|false
+}
+
+Rules:
+- "escalate" is true only if the tone suggests the customer is significantly frustrated or angry and this ticket should get priority attention.
+`.trim();

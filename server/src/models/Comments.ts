@@ -9,11 +9,14 @@ export interface ICommentAttachment {
   uploadedAt?: Date;
 }
 
+export type CommentSentiment = "neutral" | "frustrated" | "angry";
+
 export interface IComment extends Document {
   ticketId: Types.ObjectId;
   userId: Types.ObjectId;
   content: string;
   attachments?: ICommentAttachment[];
+  sentiment?: CommentSentiment;
   deletedAt?: Date | null;
   createdAt: Date;
   updatedAt: Date;
@@ -36,6 +39,7 @@ const CommentSchema = new Schema<IComment>(
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true, index: true },
     content: { type: String, required: true, trim: true, maxlength: 5000 },
     attachments: { type: [CommentAttachmentSchema], default: [] },
+    sentiment: { type: String, enum: ["neutral", "frustrated", "angry"] },
     deletedAt: { type: Date, default: null },
   },
   { timestamps: true }

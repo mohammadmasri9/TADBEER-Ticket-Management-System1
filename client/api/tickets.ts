@@ -42,6 +42,8 @@ export interface TicketDTO {
   archivedBy?: any;
   deletedAt?: string | null;
   deletedBy?: any;
+  resolution?: string;
+  closedAt?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -58,6 +60,7 @@ export interface CommentDTO {
     size?: number;
     uploadedAt?: string;
   }>;
+  sentiment?: "neutral" | "frustrated" | "angry";
   deletedAt?: string | null;
   createdAt: string;
   updatedAt: string;
@@ -84,9 +87,19 @@ export interface CreateTicketPayload {
 
 export type UpdateTicketPayload = Partial<CreateTicketPayload>;
 
+export interface SmartTriageSimilarTicket {
+  _id: string;
+  title: string;
+  score: number;
+}
+
 export interface SmartTriageResponse {
   category: TicketCategory;
   priority: TicketPriority;
+  shortSummary?: string;
+  steps?: string[];
+  clarifyingQuestion?: string;
+  similarTickets?: SmartTriageSimilarTicket[];
   department?: {
     _id: string;
     name: string;

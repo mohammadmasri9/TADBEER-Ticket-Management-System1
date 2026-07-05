@@ -77,11 +77,16 @@ export async function runTool(call: ToolCall, auth: { userId: string; role: stri
           }
         : {};
 
-      // Role-based narrowing (basic): user sees own/assigned/watching; manager/admin can see more
+      // Role-based narrowing (basic): user sees own/assigned/watching; manager sees their
+      // department only; admin can see everything.
       const role = String(auth.role || "");
       if (role === "user" || role === "agent") {
         filter.$or = filter.$or || [];
         filter.$or.push({ createdBy: auth.userId }, { assignee: auth.userId }, { "watchers.userId": auth.userId });
+      } else if (role === "manager") {
+        const manager = await User.findById(auth.userId).select("departmentId").lean();
+        const deptId = (manager as any)?.departmentId?.toString?.();
+        if (deptId) filter.departmentId = deptId;
       }
 
       const list = await Ticket.find(filter)

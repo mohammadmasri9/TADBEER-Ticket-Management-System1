@@ -12,6 +12,7 @@ import ticketsRoutes from "./routes/ticket.routes";
 import notificationsRoutes from "./routes/notification.routes";
 import departmentsRoutes from "./routes/departments.routes";
 import aiRoutes from "./routes/ai.routes";
+import slaRoutes from "./routes/sla.routes";
 
 
 
@@ -92,6 +93,7 @@ app.use("/api/tickets", ticketsRoutes);
 app.use("/api/notifications", notificationsRoutes);
 app.use("/api/departments", departmentsRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/sla", slaRoutes);
 
 /* =========================
    404

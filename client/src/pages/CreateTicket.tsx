@@ -90,6 +90,7 @@ type AISuggestState = {
   assigneeName?: string;
   assigneeRole?: string;
   reasons?: string[];
+  similarTickets?: { _id: string; title: string; score: number }[];
 };
 
 // ============================================================================
@@ -453,13 +454,15 @@ const CreateTicket: React.FC = () => {
       const next: AISuggestState = {
         priority: smart.priority,
         category: smart.category,
-        shortSummary: `Smart triage recommends ${smart.category} / ${smart.priority}.`,
-        steps: Array.isArray(smart.reasons) ? smart.reasons : [],
+        shortSummary: smart.shortSummary || `AI recommends ${smart.category} / ${smart.priority}.`,
+        steps: Array.isArray(smart.steps) && smart.steps.length ? smart.steps : [],
+        clarifyingQuestion: smart.clarifyingQuestion,
         departmentName: smart.department?.name,
         departmentId: smart.department?._id,
         assigneeName: smart.assignee?.name || smart.assignee?.email,
         assigneeRole: smart.assignee?.role,
         reasons: smart.reasons || [],
+        similarTickets: smart.similarTickets || [],
       };
 
       setAiData(next);
@@ -934,6 +937,32 @@ const CreateTicket: React.FC = () => {
                   {aiData.clarifyingQuestion && (
                     <div style={{ fontSize: 13, marginBottom: 10, color: "#7c2d12" }}>
                       <strong>Clarifying question:</strong> {aiData.clarifyingQuestion}
+                    </div>
+                  )}
+
+                  {!!aiData.similarTickets?.length && (
+                    <div
+                      style={{
+                        marginBottom: 12,
+                        padding: 10,
+                        borderRadius: 8,
+                        border: "1px solid rgba(220,38,38,0.25)",
+                        background: "rgba(254,242,242,0.6)",
+                      }}
+                    >
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6, color: "#7c2d12" }}>
+                        Possible duplicate tickets
+                      </div>
+                      <ul style={{ margin: 0, paddingLeft: 18, fontSize: 13 }}>
+                        {aiData.similarTickets.map((t) => (
+                          <li key={t._id}>
+                            <a href={`/tickets/${t._id}`} target="_blank" rel="noreferrer">
+                              {t.title}
+                            </a>{" "}
+                            <span style={{ opacity: 0.7 }}>({Math.round(t.score * 100)}% similar)</span>
+                          </li>
+                        ))}
+                      </ul>
                     </div>
                   )}
 

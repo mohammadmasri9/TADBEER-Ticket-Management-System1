@@ -8,15 +8,21 @@ import Department from "../../models/departments.model";
 import {
   SYSTEM_PROMPT_TICKET_ASSIST,
   SYSTEM_PROMPT_TICKET_SUGGEST,
-  SYSTEM_PROMPT_CHATBOT,
+  SYSTEM_PROMPT_RESOLUTION_SUMMARY,
+  SYSTEM_PROMPT_SENTIMENT,
 } from "./aiPrompts";
+import { chatAgent } from "./knowledge/chatAgent";
 import {
   SuggestTicketSchema,
   AssistTicketSchema,
   ChatSchema,
+  ResolutionSummarySchema,
+  SentimentSchema,
   SuggestTicketResult,
   AssistTicketResult,
   ChatResult,
+  ResolutionSummaryResult,
+  SentimentResult,
 } from "./aiSchemas";
 
 // ---- helpers ----
@@ -93,6 +99,85 @@ function fallbackChat(reason?: string): ChatResult {
   };
 }
 
+function fallbackResolutionSummary(reason?: string): ResolutionSummaryResult {
+  return {
+    resolutionSummary: reason ? `AI fallback: ${reason}. Resolution recorded without an AI summary.` : "Ticket marked resolved.",
+    customerMessage: "Your ticket has been resolved. Reply here if you need anything else.",
+  };
+}
+
+const NEGATIVE_WORDS = [
+  "angry",
+  "furious",
+  "unacceptable",
+  "terrible",
+  "awful",
+  "useless",
+  "ridiculous",
+  "frustrated",
+  "frustrating",
+  "still broken",
+  "worst",
+  "disappointed",
+  "horrible",
+];
+
+function fallbackSentiment(text: string): SentimentResult {
+  const lower = text.toLowerCase();
+  const hits = NEGATIVE_WORDS.filter((word) => lower.includes(word)).length;
+  const shouting = /[A-Z]{4,}/.test(text) || (text.match(/!/g) || []).length >= 2;
+
+  if (hits >= 2 || (hits >= 1 && shouting)) return { sentiment: "angry", escalate: true };
+  if (hits >= 1 || shouting) return { sentiment: "frustrated", escalate: true };
+  return { sentiment: "neutral", escalate: false };
+}
+
+export async function summarizeResolutionAI(input: {
+  ticketContext: any;
+  comments: Array<{ author: string; text: string; createdAt?: any }>;
+}): Promise<ResolutionSummaryResult> {
+  try {
+    const payload = {
+      ticket: input.ticketContext,
+      recentComments: input.comments,
+    };
+
+    const text = await runJson(SYSTEM_PROMPT_RESOLUTION_SUMMARY, payload);
+    const json = parseJson(text);
+
+    const parsed = ResolutionSummarySchema.safeParse(json);
+    if (!parsed.success) {
+      console.error("Resolution summary validation failed:", parsed.error?.issues);
+      return fallbackResolutionSummary("Invalid JSON from model");
+    }
+
+    return parsed.data;
+  } catch (err: any) {
+    console.error("AI resolution summary error:", err?.message || err);
+    return fallbackResolutionSummary(err?.message || "AI error");
+  }
+}
+
+export async function classifySentimentAI(text: string): Promise<SentimentResult> {
+  const content = String(text || "").trim();
+  if (!content) return { sentiment: "neutral", escalate: false };
+
+  if (!hasAIKey()) return fallbackSentiment(content);
+
+  try {
+    const raw = await runJson(SYSTEM_PROMPT_SENTIMENT, { comment: content });
+    const json = parseJson(raw);
+
+    const parsed = SentimentSchema.safeParse(json);
+    if (!parsed.success) return fallbackSentiment(content);
+
+    return parsed.data;
+  } catch (err: any) {
+    console.error("AI sentiment error:", err?.message || err);
+    return fallbackSentiment(content);
+  }
+}
+
 function wantsToCreateTicket(text: string) {
   const q = text.toLowerCase();
   return (
@@ -110,25 +195,6 @@ function ticketTokens(text: string) {
     .replace(/[^a-z0-9\s-]/g, " ")
     .split(/\s+/)
     .filter(Boolean);
-}
-
-function guessTicketCategory(text: string): "Technical" | "Security" | "Feature" | "Account" | "Bug" {
-  const tokens = ticketTokens(text);
-  const has = (words: string[]) => words.some((word) => tokens.includes(word) || tokens.some((token) => token.includes(word)));
-  if (has(["mfa", "security", "password", "access", "phishing", "breach", "permission"])) return "Security";
-  if (has(["invoice", "billing", "payment", "account", "subscription", "plan"])) return "Account";
-  if (has(["feature", "enhancement", "add", "request", "improve"])) return "Feature";
-  if (has(["bug", "error", "crash", "broken", "failed", "exception"])) return "Bug";
-  return "Technical";
-}
-
-function guessTicketPriority(text: string): "low" | "medium" | "high" | "urgent" {
-  const tokens = ticketTokens(text);
-  const has = (words: string[]) => words.some((word) => tokens.includes(word) || tokens.some((token) => token.includes(word)));
-  if (has(["urgent", "critical", "down", "outage", "breach", "blocked", "production"])) return "urgent";
-  if (has(["cannot", "failed", "security", "many", "all", "important"])) return "high";
-  if (has(["request", "question", "update", "change"])) return "medium";
-  return "low";
 }
 
 function cleanTicketText(text: string) {
@@ -158,10 +224,12 @@ async function createTicketFromChat(input: {
     };
   }
 
-  const category = guessTicketCategory(issue);
-  const priority = guessTicketPriority(issue);
   const title = issue.length > 80 ? issue.slice(0, 77).trim() + "..." : issue;
   const description = issue.length >= 20 ? issue : `User requested help with: ${issue}`;
+
+  const triage = await suggestTicketAI({ title, description });
+  const category = triage.category;
+  const priority = triage.priority;
 
   const departments = await Department.find().select("_id name description managerId").lean();
   const categoryHints: Record<string, string[]> = {
@@ -379,23 +447,19 @@ export async function chatAIService(input: {
   }
 
   try {
-    if (!hasAIKey()) {
+    if (!hasAIKey() || !input.auth?.userId) {
       return localSmartChat({ ...input, messages: msgs });
     }
 
-    const payload = {
-      pageContext: input.pageContext || null,
-      auth: input.auth || null,
+    const agentResult = await chatAgent({
       messages: msgs,
-    };
+      pageContext: input.pageContext,
+      auth: input.auth as { userId: string; role: string },
+    });
 
-    const text = await runJson(SYSTEM_PROMPT_CHATBOT, payload);
-    const json = parseJson(text);
-
-    const parsed = ChatSchema.safeParse(json);
+    const parsed = ChatSchema.safeParse(agentResult);
     if (!parsed.success) {
-      console.error("Chat validation failed:", parsed.error?.issues);
-      console.error("Model raw text:", text);
+      console.error("Chat agent validation failed:", parsed.error?.issues);
       return localSmartChat({ ...input, messages: msgs });
     }
 

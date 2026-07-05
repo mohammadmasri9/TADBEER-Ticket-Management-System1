@@ -3,12 +3,16 @@ import { Router } from "express";
 import { z } from "zod";
 import mongoose from "mongoose";
 
-import Ticket, { TicketCategory, TicketPriority } from "../models/Ticket.model";
+import Ticket, { TicketCategory } from "../models/Ticket.model";
 import Comment from "../models/Comments";
-import Notification from "../models/Notification.model";
 import User from "../models/User.model";
 import Department from "../models/departments.model";
 import { requireAuth, requireRole } from "../middlewares/auth.middleware";
+import { createNotification } from "../utils/notify";
+import { triageTicket } from "../services/ai/ticketTriage";
+import { embedText, cosineSimilarity } from "../services/ai/embeddings";
+import { summarizeResolutionAI, classifySentimentAI } from "../services/ai/aiService";
+import { escalatePriority } from "../utils/priorityEscalation";
 
 const router = Router();
 router.use(requireAuth);
@@ -107,29 +111,6 @@ function ensureTicketAccess(req: any, ticket: any) {
   return perm === "read" || perm === "write";
 }
 
-async function createNotification(params: {
-  userId: string;
-  type: "ticket_assigned" | "ticket_updated" | "comment_added" | "ticket_overdue" | "system";
-  title: string;
-  message: string;
-  link?: string;
-}) {
-  try {
-    if (!params.userId) return;
-
-    await Notification.create({
-      userId: params.userId,
-      type: params.type,
-      title: params.title,
-      message: params.message,
-      link: params.link,
-      isRead: false,
-    });
-  } catch (err) {
-    console.error("❌ Notification create failed:", err);
-  }
-}
-
 /* =========================
    Validation Schemas
 ========================= */
@@ -161,25 +142,6 @@ function tokenizeSmartText(...parts: string[]) {
     .filter(Boolean);
 }
 
-function includesAny(tokens: string[], words: string[]) {
-  return words.some((word) => tokens.includes(word) || tokens.some((token) => token.includes(word)));
-}
-
-function inferCategory(tokens: string[]): TicketCategory {
-  if (includesAny(tokens, ["mfa", "security", "password", "access", "phishing", "breach", "permission"])) return "Security";
-  if (includesAny(tokens, ["invoice", "billing", "payment", "account", "subscription", "plan"])) return "Account";
-  if (includesAny(tokens, ["feature", "enhancement", "add", "request", "improve"])) return "Feature";
-  if (includesAny(tokens, ["bug", "error", "crash", "broken", "failed", "exception"])) return "Bug";
-  return "Technical";
-}
-
-function inferPriority(tokens: string[]): TicketPriority {
-  if (includesAny(tokens, ["urgent", "critical", "down", "outage", "breach", "blocked", "production"])) return "urgent";
-  if (includesAny(tokens, ["cannot", "failed", "security", "many", "all", "important"])) return "high";
-  if (includesAny(tokens, ["request", "question", "update", "change"])) return "medium";
-  return "low";
-}
-
 function scoreText(tokens: string[], text: string) {
   const normalized = String(text || "").toLowerCase();
   return tokens.reduce((score, token) => score + (normalized.includes(token) ? 1 : 0), 0);
@@ -197,8 +159,17 @@ router.post("/smart-triage", async (req: any, res) => {
     const data = smartTriageSchema.parse(req.body);
     const tokens = tokenizeSmartText(data.title, data.description);
 
-    const category = inferCategory(tokens);
-    const priority = inferPriority(tokens);
+    const [triageResult, embeddingResult] = await Promise.allSettled([
+      triageTicket({ title: data.title, description: data.description }),
+      embedText(`${data.title}\n${data.description}`),
+    ]);
+
+    if (triageResult.status !== "fulfilled") throw triageResult.reason;
+    const triage = triageResult.value;
+    const draftEmbedding = embeddingResult.status === "fulfilled" ? embeddingResult.value : null;
+
+    const category = triage.category;
+    const priority = triage.priority;
 
     const [departments, users, activeTickets] = await Promise.all([
       Department.find().populate("managerId", "name email role departmentId department expertise status").lean(),
@@ -229,6 +200,29 @@ router.post("/smart-triage", async (req: any, res) => {
     const selectedDept = deptScores[0]?.dept || departments[0] || null;
     const selectedDeptId = selectedDept?._id?.toString?.() || "";
 
+    let similarTickets: Array<{ _id: string; title: string; score: number }> = [];
+    if (draftEmbedding && selectedDeptId) {
+      const candidates = await Ticket.find({
+        departmentId: selectedDeptId,
+        deletedAt: null,
+        embedding: { $exists: true, $ne: [] },
+      })
+        .sort({ createdAt: -1 })
+        .limit(200)
+        .select("title embedding")
+        .lean();
+
+      similarTickets = candidates
+        .map((c: any) => ({
+          _id: String(c._id),
+          title: c.title,
+          score: cosineSimilarity(draftEmbedding, c.embedding || []),
+        }))
+        .filter((c) => c.score >= 0.82)
+        .sort((a, b) => b.score - a.score)
+        .slice(0, 5);
+    }
+
     const workload = new Map<string, number>();
     for (const ticket of activeTickets as any[]) {
       const id = normalizeId(ticket.assignee);
@@ -256,6 +250,10 @@ router.post("/smart-triage", async (req: any, res) => {
     return res.json({
       category,
       priority,
+      shortSummary: triage.shortSummary,
+      steps: triage.steps,
+      clarifyingQuestion: triage.clarifyingQuestion,
+      similarTickets,
       department: selectedDept
         ? { _id: selectedDept._id, name: selectedDept.name, managerId: selectedDept.managerId || null }
         : null,
@@ -269,8 +267,7 @@ router.post("/smart-triage", async (req: any, res) => {
           }
         : null,
       reasons: [
-        `Detected ${category} category from ticket keywords.`,
-        `Suggested ${priority} priority based on urgency and impact words.`,
+        `AI detected ${category} category with ${priority} priority.`,
         selectedDept ? `Matched department "${selectedDept.name}".` : "No department was available.",
         bestAssignee ? "Suggested assignee from expertise, availability, and workload." : "No assignee candidate was available.",
       ],
@@ -727,6 +724,11 @@ router.post("/", async (req: any, res) => {
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
     });
 
+    const embedding = await embedText(`${ticket.title}\n${ticket.description}`);
+    if (embedding) {
+      await Ticket.updateOne({ _id: ticket._id }, { $set: { embedding } });
+    }
+
     const full = await Ticket.findById(ticket._id)
       .populate("createdBy", "name email role departmentId department")
       .populate("assignee", "name email role departmentId department")
@@ -831,7 +833,31 @@ router.post("/:id/comments", async (req: any, res) => {
       )
     );
 
-    return res.status(201).json({ comment: fullComment });
+    res.status(201).json({ comment: fullComment });
+
+    // Fire-and-forget: comment posting is high-frequency, never make the client
+    // wait on sentiment classification.
+    const commentId = String(created._id);
+    const ticketId = String(ticket._id);
+    const ticketPriority = ticket.priority;
+    (async () => {
+      try {
+        const result = await classifySentimentAI(text);
+        if (result.sentiment !== "neutral") {
+          await Comment.updateOne({ _id: commentId }, { $set: { sentiment: result.sentiment } });
+        }
+        if (result.escalate && ticketPriority !== "urgent") {
+          await escalatePriority({
+            ticketId,
+            currentPriority: ticketPriority,
+            guardField: "slaEscalatedAt",
+            reason: `${result.sentiment} sentiment detected in a comment`,
+          });
+        }
+      } catch (err) {
+        console.error("❌ Sentiment classification follow-up failed:", err);
+      }
+    })();
   } catch (err: any) {
     if (err?.name === "ZodError") return res.status(400).json({ message: err.errors });
     return res.status(500).json({ message: err.message || "Server error" });
@@ -864,9 +890,17 @@ router.put("/:id", async (req: any, res) => {
       return res.status(403).json({ message: "Forbidden: you cannot edit ticket fields" });
     }
 
+    const priorityChanged = !!data.priority && data.priority !== before.priority;
+
     const updated = await Ticket.findByIdAndUpdate(
       id,
-      { ...data, dueDate: data.dueDate ? new Date(data.dueDate) : undefined },
+      {
+        ...data,
+        dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
+        // ✅ a human explicitly re-prioritizing the ticket resets SLA escalation
+        // guards, so it can be warned/escalated again from this new baseline
+        ...(priorityChanged ? { slaWarnedAt: null, slaEscalatedAt: null } : {}),
+      },
       { new: true }
     )
       .populate("createdBy", "name email role departmentId department")
@@ -907,7 +941,11 @@ router.patch("/:id/status", async (req: any, res) => {
       return res.status(403).json({ message: "Forbidden: read-only access" });
     }
 
+    const isNowClosed = status === "resolved" || status === "closed";
+    const needsResolutionSummary = isNowClosed && !ticket.resolution;
+
     ticket.status = status;
+    if (isNowClosed) ticket.closedAt = ticket.closedAt || new Date();
     await ticket.save();
 
     const changerId = getUserId(req);
@@ -938,6 +976,57 @@ router.patch("/:id/status", async (req: any, res) => {
       .populate("watchers.userId", "name email role departmentId department");
 
     res.json(full);
+
+    if (needsResolutionSummary) {
+      const ticketId = String(ticket._id);
+      const creatorId = createdById;
+      const commentAuthorId = assigneeId || changerId;
+      (async () => {
+        try {
+          const recentComments = await Comment.find({ ticketId, deletedAt: null })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .populate("userId", "name email role")
+            .lean();
+
+          const summary = await summarizeResolutionAI({
+            ticketContext: {
+              title: ticket.title,
+              description: ticket.description,
+              status,
+              priority: ticket.priority,
+            },
+            comments: recentComments.reverse().map((c: any) => ({
+              author: c?.userId?.name || c?.userId?.email || "User",
+              text: String(c?.content || ""),
+              createdAt: c?.createdAt,
+            })),
+          });
+
+          await Ticket.updateOne({ _id: ticketId }, { $set: { resolution: summary.resolutionSummary } });
+
+          if (creatorId && commentAuthorId) {
+            await Comment.create({
+              ticketId,
+              userId: commentAuthorId,
+              content: summary.customerMessage,
+              attachments: [],
+              deletedAt: null,
+            });
+
+            await createNotification({
+              userId: creatorId,
+              type: "ticket_updated",
+              title: "Ticket Resolved",
+              message: summary.customerMessage,
+              link: `/tickets/${ticketId}`,
+            });
+          }
+        } catch (err) {
+          console.error("❌ Resolution summary follow-up failed:", err);
+        }
+      })();
+    }
   } catch (err: any) {
     if (err?.name === "ZodError") return res.status(400).json({ message: err.errors });
     return res.status(500).json({ message: err.message || "Server error" });

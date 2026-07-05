@@ -51,6 +51,10 @@ export interface ITicket extends Document {
 
   closedAt?: Date;
 
+  // ✅ SLA escalation guards (set once per breach cycle, cleared on manual priority change)
+  slaWarnedAt?: Date | null;
+  slaEscalatedAt?: Date | null;
+
   // ✅ Soft delete for recycle bin
   deletedAt?: Date;
   deletedBy?: Types.ObjectId;
@@ -129,6 +133,10 @@ const TicketSchema = new Schema<ITicket>(
     satisfactionRating: { type: Number, min: 1, max: 5 },
 
     closedAt: { type: Date },
+
+    // ✅ SLA escalation guards
+    slaWarnedAt: { type: Date, default: null },
+    slaEscalatedAt: { type: Date, default: null },
 
     // ✅ Soft delete for recycle bin
     deletedAt: { type: Date, default: null },

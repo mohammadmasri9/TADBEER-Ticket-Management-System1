@@ -6,6 +6,7 @@ export const aiConfig = {
   model: process.env.AI_MODEL?.trim() || "openai/gpt-3.5-turbo",
   maxTokens: Number(process.env.AI_MAX_TOKENS || 600),
   temperature: Number(process.env.AI_TEMPERATURE || 0.2),
+  embeddingModel: process.env.AI_EMBEDDING_MODEL?.trim() || "openai/text-embedding-3-small",
 };
 
 export const openai = new OpenAI({

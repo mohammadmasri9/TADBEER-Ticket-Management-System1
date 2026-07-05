@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import Footer from "../components/Footer";
+import { getSLAPolicies, updateSLAPolicy, getSLAMetrics } from "../../api/sla";
 import "../style/SLAPage.css";
 
 import {
@@ -70,65 +71,14 @@ interface FormErrors {
   [key: string]: string;
 }
 
-// ============================================================================
-// MOCK DATA (Replace with API calls)
-// ============================================================================
-
-const mockPolicies: SLAPolicy[] = [
-  {
-    _id: "1",
-    name: "Critical Priority SLA",
-    description: "For urgent and critical tickets requiring immediate attention",
-    priority: "urgent",
-    responseTime: 15,
-    resolutionTime: 120,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    _id: "2",
-    name: "High Priority SLA",
-    description: "For high priority tickets affecting multiple users",
-    priority: "high",
-    responseTime: 30,
-    resolutionTime: 240,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    _id: "3",
-    name: "Medium Priority SLA",
-    description: "For standard support requests",
-    priority: "medium",
-    responseTime: 60,
-    resolutionTime: 480,
-    isActive: true,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-  {
-    _id: "4",
-    name: "Low Priority SLA",
-    description: "For general inquiries and low priority issues",
-    priority: "low",
-    responseTime: 120,
-    resolutionTime: 720,
-    isActive: false,
-    createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString(),
-  },
-];
-
-const mockMetrics: SLAMetrics = {
-  totalTickets: 1247,
-  metSLA: 1089,
-  breachedSLA: 98,
-  atRisk: 60,
-  avgResponseTime: 23,
-  avgResolutionTime: 187,
-  complianceRate: 87.3,
+const EMPTY_METRICS: SLAMetrics = {
+  totalTickets: 0,
+  metSLA: 0,
+  breachedSLA: 0,
+  atRisk: 0,
+  avgResponseTime: 0,
+  avgResolutionTime: 0,
+  complianceRate: 0,
 };
 
 // ============================================================================
@@ -145,16 +95,15 @@ const SLAPage: React.FC = () => {
   const canManage = isAdmin || isManager;
 
   // State
-  const [policies, setPolicies] = useState<SLAPolicy[]>(mockPolicies);
-  const [metrics] = useState<SLAMetrics>(mockMetrics);
-  const [loading, setLoading] = useState(false);
+  const [policies, setPolicies] = useState<SLAPolicy[]>([]);
+  const [metrics, setMetrics] = useState<SLAMetrics>(EMPTY_METRICS);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
 
   const [modalOpen, setModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [activePolicy, setActivePolicy] = useState<SLAPolicy | null>(null);
 
   const [formData, setFormData] = useState<FormData>({
@@ -168,7 +117,30 @@ const SLAPage: React.FC = () => {
 
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [saving, setSaving] = useState(false);
-  const [deletingId, setDeletingId] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    (async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const [policiesRes, metricsRes] = await Promise.all([getSLAPolicies(), getSLAMetrics()]);
+        if (!mounted) return;
+        setPolicies(policiesRes as SLAPolicy[]);
+        setMetrics(metricsRes);
+      } catch (e: any) {
+        if (!mounted) return;
+        setError(e?.response?.data?.message || e?.message || "Failed to load SLA data");
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Access denied for non-admins/managers
   if (!canManage) {
@@ -274,23 +246,7 @@ const SLAPage: React.FC = () => {
   };
 
   // Modal handlers
-  const openCreate = () => {
-    setModalMode("create");
-    setActivePolicy(null);
-    setFormData({
-      name: "",
-      description: "",
-      priority: "medium",
-      responseTime: "",
-      resolutionTime: "",
-      isActive: true,
-    });
-    setFormErrors({});
-    setModalOpen(true);
-  };
-
   const openEdit = (policy: SLAPolicy) => {
-    setModalMode("edit");
     setActivePolicy(policy);
     setFormData({
       name: policy.name,
@@ -361,70 +317,35 @@ const SLAPage: React.FC = () => {
     return Object.keys(errors).length === 0;
   };
 
-  const handleSave = () => {
-    if (!validateForm()) return;
+  const handleSave = async () => {
+    if (!validateForm() || !activePolicy) return;
 
     setSaving(true);
+    try {
+      const updated = await updateSLAPolicy(activePolicy._id, {
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        responseTime: Number(formData.responseTime),
+        resolutionTime: Number(formData.resolutionTime),
+        isActive: formData.isActive,
+      });
 
-    // Simulate API call
-    setTimeout(() => {
-      if (modalMode === "create") {
-        const newPolicy: SLAPolicy = {
-          _id: Date.now().toString(),
-          name: formData.name.trim(),
-          description: formData.description.trim(),
-          priority: formData.priority,
-          responseTime: Number(formData.responseTime),
-          resolutionTime: Number(formData.resolutionTime),
-          isActive: formData.isActive,
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        };
-        setPolicies((prev) => [newPolicy, ...prev]);
-      } else if (activePolicy) {
-        setPolicies((prev) =>
-          prev.map((p) =>
-            p._id === activePolicy._id
-              ? {
-                  ...p,
-                  name: formData.name.trim(),
-                  description: formData.description.trim(),
-                  priority: formData.priority,
-                  responseTime: Number(formData.responseTime),
-                  resolutionTime: Number(formData.resolutionTime),
-                  isActive: formData.isActive,
-                  updatedAt: new Date().toISOString(),
-                }
-              : p
-          )
-        );
-      }
-
-      setSaving(false);
+      setPolicies((prev) => prev.map((p) => (p._id === updated._id ? (updated as SLAPolicy) : p)));
       setModalOpen(false);
-    }, 800);
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Failed to save policy");
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const handleDelete = (policy: SLAPolicy) => {
-    const ok = window.confirm(`Delete SLA policy "${policy.name}"? This action cannot be undone.`);
-    if (!ok) return;
-
-    setDeletingId(policy._id);
-    // Simulate API call
-    setTimeout(() => {
-      setPolicies((prev) => prev.filter((p) => p._id !== policy._id));
-      setDeletingId("");
-    }, 600);
-  };
-
-  const handleToggleActive = (policy: SLAPolicy) => {
-    setPolicies((prev) =>
-      prev.map((p) =>
-        p._id === policy._id
-          ? { ...p, isActive: !p.isActive, updatedAt: new Date().toISOString() }
-          : p
-      )
-    );
+  const handleToggleActive = async (policy: SLAPolicy) => {
+    try {
+      const updated = await updateSLAPolicy(policy._id, { isActive: !policy.isActive });
+      setPolicies((prev) => prev.map((p) => (p._id === updated._id ? (updated as SLAPolicy) : p)));
+    } catch (e: any) {
+      setError(e?.response?.data?.message || e?.message || "Failed to update policy");
+    }
   };
 
   return (
@@ -578,13 +499,14 @@ const SLAPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="controls-right">
-            <button className="add-policy-btn" type="button" onClick={openCreate}>
-              <Plus size={18} />
-              Add SLA Policy
-            </button>
-          </div>
         </div>
+
+        {error && (
+          <div className="empty-state">
+            <AlertCircle size={40} strokeWidth={1} />
+            <p>{error}</p>
+          </div>
+        )}
 
         {/* Policies List */}
         <div className="policies-list">
@@ -597,17 +519,7 @@ const SLAPage: React.FC = () => {
             <div className="empty-state">
               <Target size={64} strokeWidth={1} />
               <h3>No policies found</h3>
-              <p>
-                {searchQuery
-                  ? "Try adjusting your search"
-                  : "Create your first SLA policy to get started"}
-              </p>
-              {!searchQuery && (
-                <button className="add-policy-btn" type="button" onClick={openCreate}>
-                  <Plus size={18} />
-                  Add SLA Policy
-                </button>
-              )}
+              <p>{searchQuery ? "Try adjusting your search" : "No SLA policies configured yet"}</p>
             </div>
           ) : (
             filteredPolicies.map((policy) => (
@@ -642,19 +554,6 @@ const SLAPage: React.FC = () => {
                       type="button"
                     >
                       <Edit size={18} />
-                    </button>
-                    <button
-                      className="action-icon-btn delete-btn"
-                      onClick={() => handleDelete(policy)}
-                      disabled={deletingId === policy._id}
-                      title="Delete"
-                      type="button"
-                    >
-                      {deletingId === policy._id ? (
-                        <Loader2 size={18} className="spinning" />
-                      ) : (
-                        <Trash2 size={18} />
-                      )}
                     </button>
                   </div>
                 </div>
@@ -708,17 +607,11 @@ const SLAPage: React.FC = () => {
 
               <div className="modal-header">
                 <div className="modal-header-icon">
-                  {modalMode === "create" ? <Plus size={24} /> : <Edit size={24} />}
+                  <Edit size={24} />
                 </div>
                 <div className="modal-header-text">
-                  <h2 className="modal-title">
-                    {modalMode === "create" ? "Add SLA Policy" : "Edit SLA Policy"}
-                  </h2>
-                  <p className="modal-subtitle">
-                    {modalMode === "create"
-                      ? "Create a new service level agreement policy"
-                      : "Update service level agreement policy"}
-                  </p>
+                  <h2 className="modal-title">Edit SLA Policy</h2>
+                  <p className="modal-subtitle">Update service level agreement policy</p>
                 </div>
               </div>
 
@@ -773,19 +666,9 @@ const SLAPage: React.FC = () => {
                       <div className="form-group">
                         <label htmlFor="priority">
                           <Shield size={16} />
-                          Priority Level <span className="required">*</span>
+                          Priority Level
                         </label>
-                        <select
-                          id="priority"
-                          name="priority"
-                          value={formData.priority}
-                          onChange={handleChange}
-                        >
-                          <option value="low">Low</option>
-                          <option value="medium">Medium</option>
-                          <option value="high">High</option>
-                          <option value="urgent">Urgent</option>
-                        </select>
+                        <input type="text" id="priority" value={formData.priority} disabled readOnly />
                       </div>
 
                       <div className="form-group">
@@ -881,12 +764,7 @@ const SLAPage: React.FC = () => {
                     {saving ? (
                       <>
                         <div className="spinner" />
-                        {modalMode === "create" ? "Creating..." : "Updating..."}
-                      </>
-                    ) : modalMode === "create" ? (
-                      <>
-                        <Plus size={18} />
-                        Create Policy
+                        Updating...
                       </>
                     ) : (
                       <>
